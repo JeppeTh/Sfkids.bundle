@@ -62,10 +62,10 @@ def FixHlsLanguage(url, **kwargs):
 
    streams = sorted(streams, key=lambda stream: int(stream['bw']), reverse=True)
 
-   if Prefs['playerDecideBitRate']:
-       return playlist
-   elif Prefs['downgradeHls']:
+   if Prefs['downgradeHls']:
        return DowngradeHls(streams[0])
+   elif Prefs['playerDecideBitRate']:
+       return playlist
    else:
        return streams[0]["meta"] + "\n" + streams[0]["url"]
 

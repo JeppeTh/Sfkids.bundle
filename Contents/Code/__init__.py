@@ -62,9 +62,8 @@ def Movies(title2, url):
     oc = ObjectContainer(title2=unicode(title2))
 
     for item in JSON.ObjectFromURL(url)['Items']:
-        if item['SortTitle'] == "":
-            continue
-        oc.add(MakeVideoObject(item))
+        if item['SortTitle'] != "":
+            oc.add(MakeVideoObject(item))
 
     oc.objects.sort(key=lambda obj: obj.title)
     return oc
@@ -75,9 +74,8 @@ def Series(title2, url):
     oc = ObjectContainer(title2=unicode(title2))
 
     for item in JSON.ObjectFromURL(url)['Items']:
-        if item['SortTitle'] == "n/a":
-            continue
-        oc.add(MakeTvShowObject(item))
+        if item['SortTitle'] != "n/a":
+            oc.add(MakeTvShowObject(item))
 
     oc.objects.sort(key=lambda obj: obj.title)
     return oc
