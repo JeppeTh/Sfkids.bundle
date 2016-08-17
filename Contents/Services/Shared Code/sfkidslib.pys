@@ -1,0 +1,70 @@
+import re
+ICON = 'icon-default.jpg'
+
+BASE_URL = "https://pp.sfkids.com"
+
+def Login(ReLogin=False):
+    try:
+        DoLogin(ReLogin)
+    except Exception as e:
+        Log("JTDEBUG DoLogin Failed: %s" % e)
+        raise e
+
+def DoLogin(ReLogin=False):
+
+    url = "https://pp.sfkids.com/Neonstingray.Nettv4.RestApi/api/se/23/users"
+    if ReLogin or not HTTP.CookiesForURL(url) or not "CustomerAuthToken" in HTTP.CookiesForURL(url):
+        HTTP.ClearCookies()
+        HTTP.Request("https://pp.sfkids.com/Neonstingray.Nettv4.RestApi/api/se/23/Devices?apiKey=8c1611af2f394cc391d2d81e0ed4b730&manufacturer=Samsung&model=S7&udid=udid", values={"apiKey":"8c1611af2f394cc391d2d81e0ed4b730"}, cacheTime=0).content
+        email    = String.Quote(Prefs['username'])
+        password = String.Quote(Prefs['password'])
+        authUrl = url + "?username=" + email + "&password="+ password
+        try:
+            result = JSON.ObjectFromURL(authUrl, cacheTime=0)
+            if not 'MppToken' in result:
+                raise Exception("Login Failed:%r" % result)
+            else:
+                Log("JTDEBUG logged in")
+        except Exception as e:
+            Log("JTDEBUG HTTP/Login failed:%s" % e)
+            raise Exception("HTTP/Login Failed:%s" % e)
+    else:
+        Log("JTDEBUG already logged in")
+
+def MakeVideoObject(item, show=None):
+    thumb = R(ICON)
+    try:
+        duration = int(item['Length'])*60*1000
+    except:
+        duration = None
+
+    art = None
+    for image in item['Images']:
+        if image['TypeId'] == 2:
+            thumb = image['Link']['Href']
+        if image['TypeId'] == 3:
+            art = image['Link']['Href']
+
+    url = BASE_URL + item['Self']['Href']
+        
+    if 'EpisodeNo' in item:
+        return EpisodeObject(title    = item['SortTitle'],
+                             show     = show,
+                             summary  = unicode(item['LongSummary']),
+                             duration = duration,
+                             thumb    = thumb,
+                             # art      = art,
+                             url      = url,
+                             index    = item['EpisodeNo'],
+                             season   = item['SeasonNo'],
+                             )
+    else:
+        return MovieObject(title     = item['SortTitle'],
+                           year      = item['Year'],
+                           summary   = unicode(item['LongSummary']),
+                           countries = [item['ProductionCountry']],
+                           thumb     = thumb,
+                           # art       = art,
+                           url       = url,
+                           duration  = duration,
+                           )

@@ -1,0 +1,103 @@
+import re
+
+from sfkidslib import Login as Login
+from sfkidslib import MakeVideoObject as MakeVideoObject
+
+BASE_URL = "https://pp.sfkids.com"
+
+RE_HLS_VERSION = Regex('EXT-X-VERSION *: *([0-9]+)')
+RE_TS_MISSING_PREFIX = Regex('(^[^:/]+\.ts.*)', Regex.MULTILINE)
+
+####################################################################################################
+def MetadataObjectForURL(url):
+    try:
+        return MakeVideoObject(JSON.ObjectFromURL(url))
+    except Exception as e:
+        Log("JTDEBUG MakeVideoObject failed:%s" %e)
+        return VideoClipObject()
+
+####################################################################################################
+@deferred
+def MediaObjectsForURL(url):
+
+    stream_url = GetStream(url)
+    Log("JTDEBUG stream_url:%r" % stream_url)
+    return [MediaObject(parts = [PartObject(key=HTTPLiveStreamURL(Callback(FixHlsLanguage, url=stream_url)))],
+                        audio_channels = 2,
+                        optimized_for_streaming = True
+                        )
+            ]
+
+####################################################################################################
+def FixHlsLanguage(url, **kwargs):
+   playlist = HTTP.Request(url).content
+   # Remove unused Languages
+   new_audio = None
+   preferred_language = "LANGUAGE=\"%s\"" % Prefs['language']
+   if preferred_language in playlist:
+       for audio in re.findall("^.+LANGUAGE=.+$", playlist, re.M):
+           if not preferred_language in audio:
+               playlist = re.sub(audio+"\\n", "", playlist)
+           elif "-audio_" in audio:
+               new_audio = re.sub(".+-(audio_[^=]+)=.+", "\\1", audio)
+   i=0
+   metas = re.findall("^(#EXT-X-STREAM-INF:BANDWIDTH=([0-9]+).*RESOLUTION=.+)$", playlist, re.M)
+   prefix = re.sub("/[^/]+\.m3u8.*$", "/", url)
+   streams = []
+   for stream in re.findall("^[^#]+\.m3u8.*$", playlist, re.M):
+       # Add http-prefix if missing
+       if not "http" in stream:
+           playlist = re.sub(stream, prefix+stream, playlist)
+           stream = prefix+stream
+       # Change language/audio if necessary
+       if new_audio:
+           new_stream = re.sub("\-audio_[^=]+=", "-%s=" % new_audio, stream)
+           playlist = re.sub(stream, new_stream, playlist)
+           stream = new_stream
+       if i > (len(metas)-1):
+           # There's some other "version 4" streams as well - ignore those
+           metas.append(("",0))
+       streams.append({"url":stream, "bw":metas[i][1], "meta":metas[i][0]})
+       i = i+1
+
+   streams = sorted(streams, key=lambda stream: int(stream['bw']), reverse=True)
+
+   if Prefs['playerDecideBitRate']:
+       return playlist
+   elif Prefs['downgradeHls']:
+       return DowngradeHls(streams[0])
+   else:
+       return streams[0]["meta"] + "\n" + streams[0]["url"]
+
+####################################################################################################
+def DowngradeHls(stream):
+    url = stream['url']
+    playlist = HTTP.Request(url).content
+    # Downgrade HLS versions higher than 3
+    if int(RE_HLS_VERSION.search(playlist).group(1)) > 3:
+        playlist = playlist.replace(RE_HLS_VERSION.search(playlist).group(0),"EXT-X-VERSION:3")
+    url_prefix = url[:url.split("?")[0].rindex("/")]
+    for ts in RE_TS_MISSING_PREFIX.findall(playlist):
+        playlist = playlist.replace(ts,"%s/%s" % (url_prefix, ts))
+    # Log("JTDEBUG playlist:%r" % playlist)
+    return playlist
+
+####################################################################################################
+def GetStream(url):
+    try:
+        item = JSON.ObjectFromURL(url)
+        Login()
+        streams = JSON.ObjectFromURL(BASE_URL + item['FullPlay']['Href'])['Features']
+        if 'Hls' in streams:
+            return streams['Hls'][0]['Link']['Href']
+        else:
+            Log("JTDEBUG No HLS found:%r" % streams)
+
+    except Exception as e:
+        Log("JTDEBUG GetStream Exception:%s" % e)
+        pass
+    raise Ex.MediaNotAvailable
+
+####################################################################################################
+def NormalizeURL(url):
+    return url

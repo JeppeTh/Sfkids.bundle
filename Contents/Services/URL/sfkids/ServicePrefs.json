@@ -1,0 +1,34 @@
+[
+  {
+    "id": "language",
+    "type": "enum",
+    "label": "Language",
+    "values": ["sv", "da", "no", "fi"],
+    "default": "sv"
+  },
+  {
+    "id":"username",
+    "type":"text",
+    "label":"Username",
+    "default":"",
+  },
+  {
+    "id":"password",
+    "type":"text",
+    "option":"hidden",
+    "label":"Password",
+    "default":"",
+  },
+  {
+    "id": "playerDecideBitRate",
+    "type": "bool",
+    "label": "Let Player decide bitrate",
+    "default": "true"
+  },
+  {
+    "id": "downgradeHls",
+    "type": "bool",
+    "label": "Downgrade HLS ver 4",
+    "default": "false"
+  }
+]
