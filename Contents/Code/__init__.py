@@ -40,6 +40,7 @@ def MainMenu():
     oc = ObjectContainer()
     try:
         Login()
+        oc = AddSections(oc)
         oc.add(CreateDirObject("Movies", Callback(Movies, title2="Movies", url=MakeUrl("Movies"))))
         oc.add(CreateDirObject("TV Shows", Callback(Series, title2="TV Shows", url=MakeUrl("Series"))))
         oc.add(CreateDirObject("Re-Login", Callback(ReLogin)))
@@ -56,9 +57,26 @@ def MainMenu():
 
     return oc
 
+def AddSections(oc):
+    try:
+        for item in JSON.ObjectFromURL(MakeUrl("lists")):
+            if 'SelectedForPreview' in item['Custom'] and item['Custom']['SelectedForPreview']=='True':
+                oc.add(CreateDirObject(item['Name'], Callback(Section, title2=item['Name'], url=FixUrl(item['Items']['Href'])), GetThumb(item, 57)))
+    except Exception as e:
+        Log("JTDEBUG AddSections failed:%s" % e)
+    return oc
+
+@route('/video/sfkids/section')
+def Section(title2, url):
+    Log("JTDEBUG Section(%s %s)" % (title2, url))
+    return AddVideos(title2, url)
+
 @route('/video/sfkids/movies')
 def Movies(title2, url):
     Log("JTDEBUG Movies(%s %s)" % (title2, url))
+    return AddVideos(title2, url)
+
+def AddVideos(title2, url):
     oc = ObjectContainer(title2=unicode(title2))
 
     for item in JSON.ObjectFromURL(url)['Items']:
@@ -142,6 +160,11 @@ def ReLogin():
 
 def MakeUrl(Item):
     return BASE_URL + "/Neonstingray.Nettv4.RestApi/api/se/23/%s?language=%s&take=500" % (Item, Prefs['language'])
+
+def FixUrl(url):
+    url = re.sub("&[^=]+={[^}]+}", "", url)
+    url = re.sub("\?[^=]+={[^}]+}&", "?", url)
+    return BASE_URL + re.sub("\?[^=]+={[^}]+}", "", url) 
 
 def GetThumb(item, type_id):
     thumb = R(ICON)
